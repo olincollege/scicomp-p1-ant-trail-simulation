@@ -1,95 +1,83 @@
 import pygame
-import os
+import numpy as np
+import sys
 from constants import *
 from ants import AntWorld
-from screen import Button, Panel, Slider, TextUI
 
-pygame.init()
-screen = pygame.display.set_mode((Width, Height))
-pygame.display.set_caption("Ant Trail Formation")
-clock = pygame.time.Clock()
 
-# ======================
-# LOAD ANT SPRITES
-# ======================
-ANT_SIZE = 8
+def main():
+    # Initialize Pygame
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Ant Trail CA: Watmough & Edelstein-Keshet")
+    clock = pygame.time.Clock()
 
-ANT_IMG = pygame.image.load(os.path.join("assets", "ant.png")).convert_alpha()
+    # Initialize Model and UI
+    world = AntWorld()
+    font = pygame.font.SysFont("Arial", 20)
+    step_count = 0
 
-ANT_IMG = pygame.transform.scale(ANT_IMG, (ANT_SIZE, ANT_SIZE))
+    running = True
+    while running:
+        # 1. Event Handling (Corrected)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
 
-ANT_SPRITES = [pygame.transform.rotate(ANT_IMG, -i * 45) for i in range(8)]
+            # Check for KEYDOWN first to avoid AttributeError
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    world = AntWorld()
+                    step_count = 0
+                if event.key == pygame.K_ESCAPE:
+                    running = False
 
-# ======================
-# SIMULATION
-# ======================
-world = AntWorld()
+        # 2. Update Simulation
+        world.step()
+        step_count += 1
 
-panel = Panel()
-reset_btn = Button("Reset")
+        # 3. Drawing
+        screen.fill(BLACK)
 
-fidelity_slider = Slider(Width - 330, 200, 0, 0, 255, 200, 10, max=255)
-deposit_slider = Slider(Width - 330, 260, 0, 0, 20, 200, 10, max=20)
-evap_slider = Slider(Width - 330, 320, 0, 0, 5, 200, 10, max=5)
-
-running = True
-
-while running:
-    clock.tick(FPS)
-    screen.fill(BLACK)
-
-    clicked = False
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            clicked = True
-
-    # ======================
-    # UI
-    # ======================
-    panel.Render(screen)
-    reset_btn.Render(screen)
-
-    world.fidelity = int(fidelity_slider.Render(screen))
-    world.deposit = int(deposit_slider.Render(screen))
-    world.evaporation = int(evap_slider.Render(screen))
-
-    TextUI("Fidelity", (Width - 250, 190), WHITE).Render(screen)
-    TextUI("Deposit", (Width - 250, 250), WHITE).Render(screen)
-    TextUI("Evaporation", (Width - 250, 310), WHITE).Render(screen)
-
-    if reset_btn.state:
-        world = AntWorld()
-
-    # ======================
-    # UPDATE MODEL
-    # ======================
-    world.step()
-
-    # ======================
-    # DRAW PHEROMONES
-    # ======================
-    for x in range(GRID_SIZE):
-        for y in range(GRID_SIZE):
+        # Render Pheromones
+        # We only look for cells with significant pheromone to speed up rendering
+        active_cells = np.argwhere(world.grid > 0.1)
+        for x, y in active_cells:
             val = world.grid[x, y]
-            if val > 0:
-                c = min(255, int(val * 4))
-                pygame.draw.rect(
-                    screen,
-                    (c, c, c),
-                    (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE),
-                )
+            # Map concentration to brightness (White trails)
+            # Multiplying by 15-20 makes the 'trunk' lines much more visible
+            c_val = min(255, int(val * 15))
+            pygame.draw.rect(
+                screen,
+                (c_val, c_val, c_val),
+                (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE),
+            )
 
-    # ======================
-    # DRAW ANTS (ON TOP)
-    # ======================
-    for ant in world.ants:
-        screen.blit(
-            ANT_SPRITES[ant.direction],
-            (ant.x * CELL_SIZE - ANT_SIZE // 2, ant.y * CELL_SIZE - ANT_SIZE // 2),
+        # Render Ants
+        for ant in world.ants:
+            # Followers are Red, Explorers are slightly darker Red
+            color = (255, 50, 50) if ant.following else (150, 30, 30)
+            pygame.draw.circle(
+                screen, color, (int(ant.x * CELL_SIZE), int(ant.y * CELL_SIZE)), 2
+            )
+
+        # 4. UI Overlay
+        # Displaying steps is important because lines take time to emerge
+        stats_surf = font.render(
+            f"Step: {step_count} | Ants: {len(world.ants)} | [R] Reset",
+            True,
+            (0, 255, 0),
         )
+        screen.blit(stats_surf, (10, 10))
 
-    pygame.display.flip()
+        pygame.display.flip()
 
-pygame.quit()
+        # Lowering FPS (defined in constants) allows you to see the line growth
+        clock.tick(FPS)
+
+    pygame.quit()
+    sys.exit()
+
+
+if __name__ == "__main__":
+    main()
