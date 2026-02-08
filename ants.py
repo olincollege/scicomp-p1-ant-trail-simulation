@@ -3,98 +3,119 @@ import random
 from constants import *
 
 
+def get_fidelity(C):
+    """Piecewise linear fidelity function
+
+    Args:
+        C: the int to the concentration level
+
+    Returns:
+        int: the total fidelity rate
+    """
+    if C >= C_SAT:
+        return F_MIN + DELTA_F
+    return F_MIN + (DELTA_F * C / C_SAT)
+
+
 class Ant:
-    def __init__(self, x, y, direction):
+    def __init__(self, x, y):
         self.x, self.y = x, y
-        self.direction = direction
-        self.following = False  # State toggle: Is the ant 'locked' onto a trail?
+
+        # Ant direction is set for the Ant moving set for random
+        self.direction = random.randint(0, 7)
+
+    def move(self, grid):
+        """Piecewise linear fidelity function
+
+        Args:
+            grid: the
+
+        Returns:
+            int: the total fidelity rate
+        """
+        C = grid[self.x, self.y]
+
+        # Probability of for ant following the path based on the paper is phi/256
+        ant_following = random.randint(0, 255) < get_fidelity(C)
+
+        if ant_following:
+            # FORK ALGORITHM IMPLEMENTATION
+            dx, dy = DIRECTIONS[self.direction]  # Set of directions
+            nx, ny = self.x + dx, self.y + dy  # Values set for location on the set grid
+
+            # First check is to see if the ants can move straight ahead
+            if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE and grid[nx, ny] > 0:
+                pass
+            else:
+                # Second check is to see if the ants can move within the set branches
+                left_dir = (self.direction - 1) % 8
+                right_dir = (self.direction + 1) % 8
+
+                l_val = self._get_val(grid, left_dir)
+                r_val = self._get_val(grid, right_dir)
+
+                if l_val > r_val:
+                    self.direction = left_dir
+                elif r_val > l_val:
+                    self.direction = right_dir
+                else:
+                    self.explore()
+        else:
+            self.explore()
+
+        # Updating the ant position within time with respect to direction and location
+        dx, dy = DIRECTIONS[self.direction]
+        self.x += dx
+        self.y += dy
+
+        # Absorbing boundary
+        return 0 <= self.x < GRID_SIZE and 0 <= self.y < GRID_SIZE
+
+    def _get_val(self, grid, direction):
+        """Piecewise linear fidelity function
+
+        Args:
+            grid:
+
+        Returns:
+            int: the total fidelity rate
+        """
+        dx, dy = DIRECTIONS[direction]
+        nx, ny = self.x + dx, self.y + dy
+        if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE:
+            return grid[nx, ny]
+        return -1
+
+    def explore(self):
+        """Turning kernel logic from the paper."""
+        r = random.random()
+        cum = 0
+        for n, prob in enumerate(TURN_KERNEL, 1):
+            cum += prob
+            if r <= cum:
+                turn = n if random.random() < 0.5 else -n
+                self.direction = (self.direction + turn) % 8
+                break
 
 
 class AntWorld:
-    # The 'Environment': A 2D grid storing pheromone intensity
     def __init__(self):
-        self.grid = np.zeros((GRID_SIZE, GRID_SIZE))
+        self.grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=float)
         self.ants = []
-        self.nest = GRID_SIZE // 2
-
-    def get_fidelity(self, C):
-        """
-        This is used to set up the fideltity function by calculating the probability of an ant successfully following a trail.
-        args:
-
-        As concentration (C) increases, the ant becomes 'stickier' (higher fidelity).
-        """
-        if C < C_SAT:
-            return F_MIN + DELTA_F * (C / C_SAT)
-        return F_MIN + DELTA_F
-
-    def fork_logic(self, ant):
-        """
-        THE FORK ALGORITHM This is the 'Line Straightener.' Instead of turning randomly,
-        if an ant sees pheromone directly ahead, it stays the course.
-        This prevents the trails from looking like zig-zags.
-        """
-        fwd_idx = ant.direction % 8
-        dx, dy = DIRECTIONS[fwd_idx]
-        nx, ny = ant.x + dx, ant.y + dy
-
-        # If straight ahead is within bounds and has pheromone, stay straight
-        if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE:
-            if self.grid[nx, ny] > 0.5:
-                return fwd_idx
-
-        # Otherwise, check Left/Right 45 degrees
-        l_idx, r_idx = (ant.direction - 1) % 8, (ant.direction + 1) % 8
-        # Simple directional check
-        return l_idx if random.random() < 0.5 else r_idx
+        self.nest = (GRID_SIZE // 2, GRID_SIZE // 2)
 
     def step(self):
-        # 1. Spawning
+        # Spawn new ants (Matches the Ant.__init__ signature)
         if len(self.ants) < MAX_ANTS:
             for _ in range(ANTS_PER_STEP):
-                self.ants.append(Ant(self.nest, self.nest, random.randint(0, 7)))
+                self.ants.append(Ant(*self.nest))
 
         survivors = []
         for ant in self.ants:
-            # 2. Rule 2: Deposit Pheromone BEFORE moving
-            self.grid[ant.x, ant.y] += TAU_DEPOSIT
-
-            # 3. Direction Decision
-            if ant.following:
-                # Roll for fidelity: chance to lose the trail
-                if random.random() < BASE_LOSS_PROB or random.randint(
-                    0, 255
-                ) > self.get_fidelity(self.grid[ant.x, ant.y]):
-                    ant.following = False
-                else:
-                    ant.direction = self.fork_logic(ant)
-
-            # If not following (or just lost it), use Turning Kernel
-            if not ant.following:
-                r, cum = random.random(), 0
-                for n, p in enumerate(TURN_KERNEL):
-                    cum += p
-                    if r <= cum:
-                        ant.direction = (ant.direction + random.choice([-n, n])) % 8
-                        break
-
-            # 4. Movement & ABSORBING BOUNDARY CHECK (The Fix)
-            dx, dy = DIRECTIONS[ant.direction]
-            nx, ny = ant.x + dx, ant.y + dy
-
-            # ONLY add to survivors if nx, ny is inside the grid
-            if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE:
-                ant.x, ant.y = nx, ny
-
-                # Check for trail discovery
-                if not ant.following and self.grid[nx, ny] > 0.5:
-                    if random.randint(0, 255) <= self.get_fidelity(self.grid[nx, ny]):
-                        ant.following = True
-
+            if ant.move(self.grid):
+                self.grid[ant.x, ant.y] += TAU_DEPOSIT
                 survivors.append(ant)
-            # If out of bounds, ant is NOT appended, effectively deleted.
-
         self.ants = survivors
 
-        # 5. Rule 3: Linear Evaporation
-        self.grid = np.maximum(0, self.grid - EVAP_RATE)
+        # Linear Evaporation
+        self.grid = np.maximum(0, self.grid - EVAP_RATE_LINEAR)
