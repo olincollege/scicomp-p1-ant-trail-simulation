@@ -13,11 +13,9 @@
         <li><a href="#prerequisites">Prerequisites</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Paper Documentation</a></li>
-    <li><a href="#roadmap">Test Run</a></li>
-    <li><a href="#contributing">Contributors</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
+    <li><a href="#paper-documentation">Paper Documentation</a></li>
+    <li><a href="#test-run">Test Run</a></li>
+    <li><a href="#contributors">Contributors </a></li>
   </ol>
 </details>
 
@@ -30,7 +28,7 @@ Foraging Ants” James Watmough and Leah Edelstein-Keshet. The goal of this proj
 cellular automata simulation, that looks similar to Figure 3 in the paper. 
 
 # Built With
-* Python and its videos
+* Python and its libraries
     * Pygame
     * Numpy
     * Pytest
