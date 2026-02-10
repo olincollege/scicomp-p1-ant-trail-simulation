@@ -3,28 +3,15 @@ import random
 from constants import *
 
 
-def get_fidelity(C):
-    """Piecewise linear fidelity function
-
-    Args:
-        C: the int to the concentration level
-
-    Returns:
-        int: the total fidelity rate
-    """
-    if C >= C_SAT:
-        return F_MIN + DELTA_F
-    return F_MIN + (DELTA_F * C / C_SAT)
-
-
+# Moving where fidelity gets called inside Ant_World Class
 class Ant:
     def __init__(self, x, y):
         self.x, self.y = x, y
 
-        # Ant direction is set for the Ant moving set for random
+        # Ant direction is set for the Ant moving set for random, initally
         self.direction = random.randint(0, 7)
 
-    def move(self, grid):
+    def move(self, grid, world):
         """Piecewise linear fidelity function
 
         Args:
@@ -35,8 +22,8 @@ class Ant:
         """
         C = grid[self.x, self.y]
 
-        # Probability of for ant following the path based on the paper is phi/256
-        ant_following = random.randint(0, 255) < get_fidelity(C)
+        phi = world.get_fidelity(C)
+        ant_following = random.randint(0, 255) < phi
 
         if ant_following:
             # FORK ALGORITHM IMPLEMENTATION
@@ -89,10 +76,10 @@ class Ant:
     def explore(self):
         """Turning kernel logic from the paper."""
         r = random.random()
-        cum = 0
+        c_um = 0
         for n, prob in enumerate(TURN_KERNEL, 1):
-            cum += prob
-            if r <= cum:
+            c_um += prob
+            if r <= c_um:
                 turn = n if random.random() < 0.5 else -n
                 self.direction = (self.direction + turn) % 8
                 break
@@ -104,16 +91,29 @@ class AntWorld:
         self.ants = []
         self.nest = (GRID_SIZE // 2, GRID_SIZE // 2)
 
+    def get_fidelity(self, C):
+        """Piecewise linear fidelity function
+
+        Args:
+            C: the int to the concentration level
+
+        Returns:
+            int: the total fidelity rate
+        """
+        if C >= C_SAT:
+            return F_MIN + DELTA_F
+        return F_MIN + (DELTA_F * C / C_SAT)
+
     def step(self):
-        # Spawn new ants (Matches the Ant.__init__ signature)
+        # Spawn new ants
         if len(self.ants) < MAX_ANTS:
             for _ in range(ANTS_PER_STEP):
                 self.ants.append(Ant(*self.nest))
 
         survivors = []
         for ant in self.ants:
-            if ant.move(self.grid):
-                self.grid[ant.x, ant.y] += TAU_DEPOSIT
+            self.grid[ant.x, ant.y] += TAU_DEPOSIT
+            if ant.move(self.grid, self):
                 survivors.append(ant)
         self.ants = survivors
 

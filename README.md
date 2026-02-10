@@ -14,11 +14,10 @@
       </ul>
     </li>
     <li><a href="#usage">Paper Documentation</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#roadmap">Test Run</a></li>
+    <li><a href="#contributing">Contributors</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
 
@@ -60,6 +59,12 @@ These are the list of Python libraries needed to and how to install it.
 As mentioned above this project is based on "Modelling the Formation of Trail Networks by Foraging Ants” James Watmough and
 Leah Edelstein-Keshet. Please refer to the paper linked below if you have any further questions or more research insights. 
 [Paper Documentation](https://www.sciencedirect.com/science/article/abs/pii/S0022519385702056)
+
+# Test Run
+In order to test the validity of this code please run this command on terminal. 
+```sh
+  python3 -m pytest -v test_ants.py
+  ```
 
 # Contributors 
 Titilayo Oshinowo-  GitHub:@titiooshy

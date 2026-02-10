@@ -4,6 +4,7 @@ from ants import AntWorld
 from ui import UI
 
 
+# Use to run and incorporate in everything for the code to run.
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
